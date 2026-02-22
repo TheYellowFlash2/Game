@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firebase Battle Rooms</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#0b1220',
+            panel: '#111a2d',
+            accent: '#38bdf8',
+            lime: '#84cc16',
+            warn: '#fb7185'
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(132,204,22,0.12),transparent_30%),linear-gradient(to_bottom,#05070f,#0b1220)]">
+    <div class="mx-auto max-w-7xl p-4 md:p-8">
+      <header class="mb-6 rounded-2xl border border-slate-700/60 bg-panel/80 p-4 backdrop-blur">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight">Firebase Battle Rooms</h1>
+            <p class="text-sm text-slate-300">Multiplayer top-down shooter with rooms, weapons, and rotating maps.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="rounded-md border border-slate-600 px-2 py-1">WASD Move</span>
+            <span class="rounded-md border border-slate-600 px-2 py-1">Mouse Aim</span>
+            <span class="rounded-md border border-slate-600 px-2 py-1">Click Shoot</span>
+            <span class="rounded-md border border-slate-600 px-2 py-1">1-4 Weapon</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="grid gap-6 lg:grid-cols-[360px,1fr]">
+        <section class="rounded-2xl border border-slate-700/60 bg-panel/80 p-4 backdrop-blur">
+          <div id="menuPanel" class="space-y-4">
+            <div>
+              <label class="mb-1 block text-xs uppercase tracking-wide text-slate-400">Player Name</label>
+              <input id="nameInput" maxlength="16" class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-accent" placeholder="Player" />
+            </div>
+
+            <div>
+              <label class="mb-1 block text-xs uppercase tracking-wide text-slate-400">Map</label>
+              <select id="mapSelect" class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-accent">
+                <option value="arena">Arena District</option>
+                <option value="canyon">Canyon Works</option>
+              </select>
+            </div>
+
+            <button id="createRoomBtn" class="w-full rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-ink transition hover:brightness-110">Create Room</button>
+
+            <div class="rounded-lg border border-slate-700 p-3">
+              <label class="mb-1 block text-xs uppercase tracking-wide text-slate-400">Join Room Code</label>
+              <div class="flex gap-2">
+                <input id="roomCodeInput" maxlength="8" class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm uppercase outline-none focus:border-accent" placeholder="AB12CD" />
+                <button id="joinRoomBtn" class="rounded-lg bg-lime px-3 py-2 text-sm font-semibold text-ink transition hover:brightness-110">Join</button>
+              </div>
+            </div>
+
+            <p id="statusText" class="text-sm text-slate-300">Sign in loading...</p>
+          </div>
+
+          <div id="hudPanel" class="hidden space-y-4">
+            <div class="rounded-lg border border-slate-700 p-3 text-sm">
+              <div class="mb-2 flex items-center justify-between">
+                <span class="text-slate-400">Room</span>
+                <span id="roomCodeText" class="font-mono font-semibold"></span>
+              </div>
+              <div class="mb-2 flex items-center justify-between">
+                <span class="text-slate-400">Map</span>
+                <span id="mapNameText" class="font-semibold"></span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">You</span>
+                <span id="youText" class="font-semibold"></span>
+              </div>
+            </div>
+
+            <div>
+              <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Weapons</p>
+              <div id="weaponButtons" class="grid grid-cols-2 gap-2"></div>
+            </div>
+
+            <div>
+              <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Leaderboard</p>
+              <div id="leaderboard" class="max-h-64 space-y-2 overflow-auto"></div>
+            </div>
+
+            <button id="leaveRoomBtn" class="w-full rounded-lg bg-warn px-3 py-2 text-sm font-semibold text-ink transition hover:brightness-110">Leave Room</button>
+          </div>
+        </section>
+
+        <section class="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/80 backdrop-blur">
+          <canvas id="gameCanvas" width="1280" height="720" class="h-[68vh] w-full"></canvas>
+          <div id="overlay" class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/40">
+            <div class="rounded-xl border border-slate-600 bg-panel/90 px-6 py-4 text-center">
+              <p id="overlayText" class="text-lg font-semibold"></p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
