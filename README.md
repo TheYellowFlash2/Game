@@ -1,11 +1,12 @@
-# Firebase Battle Rooms
+# Platform Tag Rooms
 
-Multiplayer HTML5 top-down shooter with:
+Multiplayer HTML5 platformer tag game with:
 - Room create/join flow
 - Real-time players via Firestore
-- 4 weapons (Pistol, Assault, Shotgun, Sniper)
-- 2 maps (Arena District, Canyon Works)
-- Respawn flow, kills/deaths scoreboard, clean Tailwind UI
+- Platformer movement (run + jump + gravity)
+- Big maps larger than the screen (camera follows your player)
+- Tag transfer by touching players
+- Centered gameplay view when in a room
 
 ## 1) Firebase Console Setup
 
@@ -17,8 +18,6 @@ Multiplayer HTML5 top-down shooter with:
 
 ## 2) Local Run
 
-From this folder:
-
 ```bash
 cd /home/phillipwrencher5/Game
 python3 -m http.server 5500
@@ -27,27 +26,24 @@ python3 -m http.server 5500
 Open:
 - http://localhost:5500
 
-Open multiple tabs/devices, create a room in one, join by code in others.
+Open multiple tabs/devices, create room in one tab, join the room code in others.
 
 ## 3) Deploy to Firebase Hosting
 
-Install CLI once:
-
 ```bash
 npm install -g firebase-tools
-```
-
-Login and deploy:
-
-```bash
 cd /home/phillipwrencher5/Game
 firebase login
 firebase use game-61407
 firebase deploy --only firestore:rules,hosting
 ```
 
+## Controls
+
+- `A/D` or arrow keys: move
+- `W` / `ArrowUp` / `Space`: jump
+
 ## Notes
 
-- This is a finished browser multiplayer shooter baseline (2D top-down).
-- Current `firestore.rules` are intentionally permissive for serverless PvP writes.
-- For stronger anti-cheat and authoritative combat, add a server (Cloud Functions / game server) to validate hits and damage.
+- Current `firestore.rules` are permissive so serverless tag transfer works from clients.
+- For anti-cheat, move tag validation to trusted backend logic (Cloud Functions / server).

@@ -9,7 +9,6 @@ import {
   collection,
   onSnapshot,
   serverTimestamp,
-  updateDoc,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
@@ -36,83 +35,105 @@ const nameInput = document.getElementById("nameInput");
 const roomCodeInput = document.getElementById("roomCodeInput");
 const mapSelect = document.getElementById("mapSelect");
 const statusText = document.getElementById("statusText");
-const menuPanel = document.getElementById("menuPanel");
-const hudPanel = document.getElementById("hudPanel");
+const lobbySection = document.getElementById("lobbySection");
+const gameSection = document.getElementById("gameSection");
 const roomCodeText = document.getElementById("roomCodeText");
 const mapNameText = document.getElementById("mapNameText");
 const youText = document.getElementById("youText");
-const weaponButtons = document.getElementById("weaponButtons");
+const taggerText = document.getElementById("taggerText");
 const leaderboard = document.getElementById("leaderboard");
 const overlay = document.getElementById("overlay");
 const overlayText = document.getElementById("overlayText");
 
+const PLAYER_W = 30;
+const PLAYER_H = 44;
+const MOVE_SPEED = 460;
+const GRAVITY = 1900;
+const JUMP_SPEED = 760;
+const TAG_DISTANCE = 34;
+const TAG_COOLDOWN_MS = 1200;
+
 const MAPS = {
-  arena: {
-    name: "Arena District",
-    width: 1280,
-    height: 720,
-    obstacles: [
-      { x: 280, y: 180, w: 200, h: 40 },
-      { x: 760, y: 140, w: 260, h: 40 },
-      { x: 540, y: 320, w: 200, h: 120 },
-      { x: 180, y: 520, w: 280, h: 40 },
-      { x: 860, y: 500, w: 220, h: 40 }
+  city: {
+    name: "Neon City",
+    width: 3800,
+    height: 1900,
+    platforms: [
+      { x: 0, y: 1820, w: 3800, h: 80 },
+      { x: 180, y: 1650, w: 340, h: 26 },
+      { x: 650, y: 1530, w: 260, h: 24 },
+      { x: 1000, y: 1410, w: 300, h: 24 },
+      { x: 1450, y: 1280, w: 280, h: 24 },
+      { x: 1870, y: 1450, w: 340, h: 24 },
+      { x: 2350, y: 1300, w: 260, h: 24 },
+      { x: 2730, y: 1160, w: 300, h: 24 },
+      { x: 3220, y: 1360, w: 320, h: 24 },
+      { x: 250, y: 1160, w: 280, h: 24 },
+      { x: 720, y: 1020, w: 250, h: 24 },
+      { x: 1180, y: 930, w: 250, h: 24 },
+      { x: 1600, y: 820, w: 260, h: 24 },
+      { x: 2050, y: 980, w: 300, h: 24 },
+      { x: 2500, y: 870, w: 240, h: 24 },
+      { x: 2900, y: 730, w: 260, h: 24 },
+      { x: 3320, y: 900, w: 250, h: 24 }
     ],
     spawns: [
-      { x: 80, y: 80 },
-      { x: 1200, y: 80 },
-      { x: 80, y: 640 },
-      { x: 1200, y: 640 },
-      { x: 640, y: 80 },
-      { x: 640, y: 640 }
+      { x: 240, y: 1580 },
+      { x: 840, y: 1460 },
+      { x: 1550, y: 1210 },
+      { x: 2380, y: 1230 },
+      { x: 3330, y: 1290 },
+      { x: 3000, y: 660 }
     ]
   },
-  canyon: {
-    name: "Canyon Works",
-    width: 1280,
-    height: 720,
-    obstacles: [
-      { x: 200, y: 250, w: 880, h: 50 },
-      { x: 160, y: 470, w: 240, h: 40 },
-      { x: 470, y: 470, w: 340, h: 40 },
-      { x: 880, y: 470, w: 240, h: 40 },
-      { x: 570, y: 90, w: 140, h: 90 }
+  ruins: {
+    name: "Sky Ruins",
+    width: 3600,
+    height: 2000,
+    platforms: [
+      { x: 0, y: 1920, w: 3600, h: 80 },
+      { x: 180, y: 1740, w: 300, h: 26 },
+      { x: 580, y: 1600, w: 220, h: 26 },
+      { x: 920, y: 1480, w: 300, h: 26 },
+      { x: 1320, y: 1620, w: 280, h: 26 },
+      { x: 1700, y: 1480, w: 300, h: 26 },
+      { x: 2160, y: 1320, w: 240, h: 26 },
+      { x: 2500, y: 1450, w: 300, h: 26 },
+      { x: 2950, y: 1260, w: 260, h: 26 },
+      { x: 3260, y: 1030, w: 230, h: 26 },
+      { x: 260, y: 1260, w: 220, h: 26 },
+      { x: 630, y: 1110, w: 250, h: 26 },
+      { x: 1020, y: 960, w: 220, h: 26 },
+      { x: 1400, y: 820, w: 240, h: 26 },
+      { x: 1750, y: 700, w: 220, h: 26 },
+      { x: 2100, y: 850, w: 260, h: 26 },
+      { x: 2520, y: 720, w: 220, h: 26 },
+      { x: 2880, y: 600, w: 220, h: 26 }
     ],
     spawns: [
-      { x: 100, y: 100 },
-      { x: 1180, y: 100 },
-      { x: 100, y: 620 },
-      { x: 1180, y: 620 },
-      { x: 640, y: 620 },
-      { x: 640, y: 100 }
+      { x: 220, y: 1680 },
+      { x: 900, y: 1420 },
+      { x: 1770, y: 1420 },
+      { x: 2560, y: 1390 },
+      { x: 3300, y: 970 },
+      { x: 2940, y: 530 }
     ]
   }
 };
 
-const WEAPONS = {
-  pistol: { name: "Pistol", damage: 20, range: 540, spread: 0.025, pellets: 1, cooldown: 260, speedPenalty: 1.0 },
-  ar: { name: "Assault", damage: 12, range: 620, spread: 0.09, pellets: 1, cooldown: 100, speedPenalty: 0.95 },
-  shotgun: { name: "Shotgun", damage: 10, range: 320, spread: 0.38, pellets: 8, cooldown: 750, speedPenalty: 0.84 },
-  sniper: { name: "Sniper", damage: 52, range: 950, spread: 0.01, pellets: 1, cooldown: 950, speedPenalty: 0.9 }
-};
-
-const PLAYER_RADIUS = 16;
-const BASE_SPEED = 250;
-
 let user = null;
 let roomId = null;
-let currentMap = MAPS.arena;
+let currentMap = MAPS.city;
+let roomState = null;
 let localPlayer = null;
 let players = new Map();
 let roomUnsub = null;
 let playersUnsub = null;
-let keyState = {};
-let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
 let lastFrame = performance.now();
 let lastNetworkPush = 0;
-let lastShotAt = 0;
-let recentTracers = [];
-
+let keyState = {};
+let camera = { x: 0, y: 0 };
+let touchDebounceUntil = 0;
 const palette = ["#38bdf8", "#84cc16", "#f97316", "#e879f9", "#22d3ee", "#f43f5e", "#facc15"];
 
 function setStatus(msg, isError = false) {
@@ -128,10 +149,6 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
 function getRoomRef(code) {
   return doc(db, "rooms", code);
 }
@@ -144,357 +161,270 @@ function getPlayerRef(code, uid) {
   return doc(db, "rooms", code, "players", uid);
 }
 
-function pickSpawn(map) {
-  const s = map.spawns[Math.floor(Math.random() * map.spawns.length)];
-  return { x: s.x, y: s.y };
-}
-
-function collidesWithMap(x, y) {
-  if (x - PLAYER_RADIUS < 0 || y - PLAYER_RADIUS < 0 || x + PLAYER_RADIUS > currentMap.width || y + PLAYER_RADIUS > currentMap.height) {
-    return true;
-  }
-  for (const o of currentMap.obstacles) {
-    const closestX = clamp(x, o.x, o.x + o.w);
-    const closestY = clamp(y, o.y, o.y + o.h);
-    const dx = x - closestX;
-    const dy = y - closestY;
-    if (dx * dx + dy * dy < PLAYER_RADIUS * PLAYER_RADIUS) {
-      return true;
-    }
-  }
-  return false;
-}
-
 function getPlayerName() {
   const v = nameInput.value.trim();
   return v ? v.slice(0, 16) : `Player-${user.uid.slice(0, 4)}`;
 }
 
-function showGameUI(inRoom) {
-  menuPanel.classList.toggle("hidden", inRoom);
-  hudPanel.classList.toggle("hidden", !inRoom);
+function pickSpawn(map) {
+  const s = map.spawns[Math.floor(Math.random() * map.spawns.length)];
+  return { x: s.x, y: s.y };
 }
 
-function drawWeaponButtons() {
-  weaponButtons.innerHTML = "";
-  Object.entries(WEAPONS).forEach(([key, w], i) => {
-    const btn = document.createElement("button");
-    btn.textContent = `${i + 1}. ${w.name}`;
-    btn.className = "rounded-lg border border-slate-600 bg-slate-900 px-2 py-2 text-xs font-semibold hover:border-accent";
-    btn.onclick = () => {
-      if (!localPlayer) return;
-      localPlayer.weapon = key;
-      queuePlayerSync(true);
-    };
-    weaponButtons.appendChild(btn);
-  });
+function intersects(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
 }
 
-function lineRectHit(x1, y1, x2, y2, rect) {
-  const steps = 20;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const x = lerp(x1, x2, t);
-    const y = lerp(y1, y2, t);
-    if (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
-      return true;
-    }
-  }
-  return false;
+function showSections(inRoom) {
+  lobbySection.classList.toggle("hidden", inRoom);
+  gameSection.classList.toggle("hidden", !inRoom);
 }
 
-function lineCircleDistance(px, py, qx, qy, cx, cy) {
-  const vx = qx - px;
-  const vy = qy - py;
-  const wx = cx - px;
-  const wy = cy - py;
-  const c1 = wx * vx + wy * vy;
-  if (c1 <= 0) return Math.hypot(cx - px, cy - py);
-  const c2 = vx * vx + vy * vy;
-  if (c2 <= c1) return Math.hypot(cx - qx, cy - qy);
-  const b = c1 / c2;
-  const bx = px + b * vx;
-  const by = py + b * vy;
-  return Math.hypot(cx - bx, cy - by);
-}
-
-async function applyDamage(targetUid, damage) {
-  if (!roomId || !user) return;
-  const targetRef = getPlayerRef(roomId, targetUid);
-  const shooterRef = getPlayerRef(roomId, user.uid);
-  await runTransaction(db, async (tx) => {
-    const targetSnap = await tx.get(targetRef);
-    const shooterSnap = await tx.get(shooterRef);
-    if (!targetSnap.exists() || !shooterSnap.exists()) return;
-
-    const target = targetSnap.data();
-    const shooter = shooterSnap.data();
-    if (!target.alive || !shooter.alive) return;
-
-    const hp = (target.hp ?? 100) - damage;
-    if (hp <= 0) {
-      tx.update(targetRef, {
-        hp: 0,
-        alive: false,
-        deaths: (target.deaths ?? 0) + 1,
-        respawnAt: Date.now() + 3000,
-        updatedAt: serverTimestamp()
-      });
-      tx.update(shooterRef, {
-        kills: (shooter.kills ?? 0) + 1,
-        updatedAt: serverTimestamp()
-      });
-    } else {
-      tx.update(targetRef, {
-        hp,
-        updatedAt: serverTimestamp()
-      });
-    }
-  });
-}
-
-async function tryShoot() {
-  if (!localPlayer?.alive || !roomId) return;
-  const gun = WEAPONS[localPlayer.weapon] || WEAPONS.pistol;
-  const now = Date.now();
-  if (now - lastShotAt < gun.cooldown) return;
-  lastShotAt = now;
-
-  const targets = [...players.values()].filter((p) => p.uid !== user.uid && p.alive);
-  const damageByTarget = new Map();
-
-  for (let i = 0; i < gun.pellets; i++) {
-    const spread = (Math.random() - 0.5) * gun.spread;
-    const angle = localPlayer.dir + spread;
-    const ex = localPlayer.x + Math.cos(angle) * gun.range;
-    const ey = localPlayer.y + Math.sin(angle) * gun.range;
-
-    let blocked = false;
-    for (const obstacle of currentMap.obstacles) {
-      if (lineRectHit(localPlayer.x, localPlayer.y, ex, ey, obstacle)) {
-        blocked = true;
-        break;
-      }
-    }
-
-    let hitTarget = null;
-    let bestDist = Infinity;
-
-    if (!blocked) {
-      for (const t of targets) {
-        const distToRay = lineCircleDistance(localPlayer.x, localPlayer.y, ex, ey, t.x, t.y);
-        if (distToRay < PLAYER_RADIUS) {
-          const d = Math.hypot(t.x - localPlayer.x, t.y - localPlayer.y);
-          if (d < bestDist) {
-            bestDist = d;
-            hitTarget = t;
-          }
-        }
-      }
-    }
-
-    recentTracers.push({ x1: localPlayer.x, y1: localPlayer.y, x2: ex, y2: ey, t: now });
-
-    if (hitTarget) {
-      damageByTarget.set(hitTarget.uid, (damageByTarget.get(hitTarget.uid) || 0) + gun.damage);
-    }
-  }
-
-  for (const [targetUid, damage] of damageByTarget.entries()) {
-    await applyDamage(targetUid, damage);
-  }
-}
-
-function syncOverlay() {
-  if (!localPlayer) {
-    overlay.classList.add("hidden");
-    return;
-  }
-  if (!localPlayer.alive) {
-    overlay.classList.remove("hidden");
-    overlay.classList.add("flex");
-    const left = Math.max(0, Math.ceil(((localPlayer.respawnAt || Date.now()) - Date.now()) / 1000));
-    overlayText.textContent = `Respawning in ${left}s...`;
-  } else {
-    overlay.classList.add("hidden");
-    overlay.classList.remove("flex");
-  }
-}
-
-async function maybeRespawn() {
-  if (!localPlayer || localPlayer.alive || !roomId) return;
-  if ((localPlayer.respawnAt || 0) > Date.now()) return;
-
-  const spawn = pickSpawn(currentMap);
-  localPlayer = {
-    ...localPlayer,
-    x: spawn.x,
-    y: spawn.y,
-    hp: 100,
-    alive: true,
-    respawnAt: 0
+function localRect(nextX, nextY) {
+  return {
+    x: nextX - PLAYER_W / 2,
+    y: nextY - PLAYER_H,
+    w: PLAYER_W,
+    h: PLAYER_H
   };
-
-  await setDoc(getPlayerRef(roomId, user.uid), {
-    x: spawn.x,
-    y: spawn.y,
-    hp: 100,
-    alive: true,
-    respawnAt: 0,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
 }
 
-function drawMap() {
-  const g = ctx.createLinearGradient(0, 0, 0, currentMap.height);
+function resolveHorizontalCollision(nextX, nextY) {
+  let x = nextX;
+  const y = nextY;
+
+  x = clamp(x, PLAYER_W / 2, currentMap.width - PLAYER_W / 2);
+  let rect = localRect(x, y);
+
+  for (const p of currentMap.platforms) {
+    if (!intersects(rect, p)) continue;
+    if (localPlayer.vx > 0) {
+      x = p.x - PLAYER_W / 2;
+    } else if (localPlayer.vx < 0) {
+      x = p.x + p.w + PLAYER_W / 2;
+    }
+    rect = localRect(x, y);
+  }
+
+  return x;
+}
+
+function resolveVerticalCollision(nextX, nextY) {
+  let y = nextY;
+  let onGround = false;
+
+  y = clamp(y, PLAYER_H, currentMap.height + PLAYER_H);
+  let rect = localRect(nextX, y);
+
+  for (const p of currentMap.platforms) {
+    if (!intersects(rect, p)) continue;
+
+    if (localPlayer.vy > 0) {
+      y = p.y;
+      onGround = true;
+      localPlayer.vy = 0;
+    } else if (localPlayer.vy < 0) {
+      y = p.y + p.h + PLAYER_H;
+      localPlayer.vy = 0;
+    }
+    rect = localRect(nextX, y);
+  }
+
+  if (y > currentMap.height + 20) {
+    const spawn = pickSpawn(currentMap);
+    y = spawn.y;
+    localPlayer.x = spawn.x;
+    localPlayer.vx = 0;
+    localPlayer.vy = 0;
+  }
+
+  return { y, onGround };
+}
+
+function updateCamera() {
+  if (!localPlayer) return;
+  const targetX = localPlayer.x - canvas.width / 2;
+  const targetY = localPlayer.y - canvas.height / 2;
+  camera.x = clamp(targetX, 0, currentMap.width - canvas.width);
+  camera.y = clamp(targetY, 0, currentMap.height - canvas.height);
+}
+
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
   g.addColorStop(0, "#0f172a");
   g.addColorStop(1, "#111827");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, currentMap.width, currentMap.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
 
-  ctx.strokeStyle = "rgba(56, 189, 248, 0.1)";
-  for (let x = 0; x < currentMap.width; x += 40) {
+function drawWorld() {
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
+
+  for (let x = 0; x < currentMap.width; x += 80) {
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.09)";
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, currentMap.height);
     ctx.stroke();
   }
-  for (let y = 0; y < currentMap.height; y += 40) {
+  for (let y = 0; y < currentMap.height; y += 80) {
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.09)";
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(currentMap.width, y);
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#334155";
-  currentMap.obstacles.forEach((o) => {
-    ctx.fillRect(o.x, o.y, o.w, o.h);
+  for (const p of currentMap.platforms) {
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(p.x, p.y, p.w, p.h);
     ctx.strokeStyle = "#64748b";
-    ctx.strokeRect(o.x, o.y, o.w, o.h);
-  });
-}
-
-function drawTracers() {
-  const now = Date.now();
-  recentTracers = recentTracers.filter((t) => now - t.t < 120);
-  for (const t of recentTracers) {
-    const a = 1 - (now - t.t) / 120;
-    ctx.strokeStyle = `rgba(250, 204, 21, ${a})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(t.x1, t.y1);
-    ctx.lineTo(t.x2, t.y2);
-    ctx.stroke();
+    ctx.strokeRect(p.x, p.y, p.w, p.h);
   }
-}
 
-function drawPlayers() {
-  const list = [...players.values()];
-  for (const p of list) {
-    const alpha = p.alive ? 1 : 0.35;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color || "#38bdf8";
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, PLAYER_RADIUS, 0, Math.PI * 2);
-    ctx.fill();
+  for (const p of players.values()) {
+    const isTagger = roomState?.taggerId === p.uid;
+    ctx.fillStyle = isTagger ? "#f43f5e" : (p.color || "#38bdf8");
+    ctx.fillRect(p.x - PLAYER_W / 2, p.y - PLAYER_H, PLAYER_W, PLAYER_H);
 
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x + Math.cos(p.dir || 0) * 24, p.y + Math.sin(p.dir || 0) * 24);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-    ctx.fillRect(p.x - 22, p.y - 30, 44, 6);
-    ctx.fillStyle = "#22c55e";
-    ctx.fillRect(p.x - 22, p.y - 30, 44 * ((p.hp || 0) / 100), 6);
+    if (isTagger) {
+      ctx.strokeStyle = "#fda4af";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(p.x - PLAYER_W / 2 - 2, p.y - PLAYER_H - 2, PLAYER_W + 4, PLAYER_H + 4);
+    }
 
     ctx.fillStyle = "#e2e8f0";
-    ctx.font = "12px sans-serif";
+    ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`${p.name || "Player"} (${p.kills || 0})`, p.x, p.y - 38);
+    ctx.fillText(`${p.name || "Player"}`, p.x, p.y - PLAYER_H - 10);
+    ctx.fillText(`Tags: ${p.tags || 0}`, p.x, p.y - PLAYER_H - 26);
   }
-  ctx.globalAlpha = 1;
+
+  ctx.restore();
 }
 
-function drawHudText() {
-  if (!localPlayer) return;
-  const gun = WEAPONS[localPlayer.weapon] || WEAPONS.pistol;
-  ctx.fillStyle = "rgba(2, 6, 23, 0.7)";
-  ctx.fillRect(16, 16, 220, 86);
+function drawOverlay() {
+  if (!localPlayer || !roomState?.taggerId) {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("flex");
+    return;
+  }
 
-  ctx.fillStyle = "#e2e8f0";
-  ctx.font = "14px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText(`HP: ${Math.max(0, Math.floor(localPlayer.hp || 0))}`, 28, 40);
-  ctx.fillText(`Weapon: ${gun.name}`, 28, 62);
-  ctx.fillText(`Kills: ${localPlayer.kills || 0}`, 28, 84);
-
-  ctx.strokeStyle = "rgba(226, 232, 240, 0.9)";
-  ctx.beginPath();
-  ctx.moveTo(mouse.x - 8, mouse.y);
-  ctx.lineTo(mouse.x + 8, mouse.y);
-  ctx.moveTo(mouse.x, mouse.y - 8);
-  ctx.lineTo(mouse.x, mouse.y + 8);
-  ctx.stroke();
+  overlay.classList.remove("hidden");
+  overlay.classList.add("flex");
+  const youAreTagger = roomState.taggerId === user.uid;
+  overlayText.textContent = youAreTagger ? "You are IT - chase someone." : "Run - avoid the tagger.";
 }
 
 function updateLeaderboard() {
-  const sorted = [...players.values()].sort((a, b) => (b.kills || 0) - (a.kills || 0));
+  const sorted = [...players.values()].sort((a, b) => (b.tags || 0) - (a.tags || 0));
   leaderboard.innerHTML = "";
-  for (const p of sorted.slice(0, 12)) {
+
+  sorted.slice(0, 9).forEach((p) => {
     const row = document.createElement("div");
     row.className = "flex items-center justify-between rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs";
-    row.innerHTML = `<span>${p.name || "Player"}</span><span>K ${p.kills || 0} / D ${p.deaths || 0}</span>`;
+    const marker = roomState?.taggerId === p.uid ? " (IT)" : "";
+    row.innerHTML = `<span>${p.name || "Player"}${marker}</span><span>${p.tags || 0} tags</span>`;
     leaderboard.appendChild(row);
-  }
+  });
 }
 
 function queuePlayerSync(force = false) {
-  if (!roomId || !user || !localPlayer) return;
+  if (!roomId || !localPlayer) return;
   const now = performance.now();
-  if (!force && now - lastNetworkPush < 55) return;
+  if (!force && now - lastNetworkPush < 45) return;
   lastNetworkPush = now;
 
   setDoc(getPlayerRef(roomId, user.uid), {
     name: localPlayer.name,
     x: localPlayer.x,
     y: localPlayer.y,
-    dir: localPlayer.dir,
-    hp: localPlayer.hp,
-    alive: localPlayer.alive,
-    weapon: localPlayer.weapon,
-    kills: localPlayer.kills || 0,
-    deaths: localPlayer.deaths || 0,
-    respawnAt: localPlayer.respawnAt || 0,
+    vx: localPlayer.vx,
+    vy: localPlayer.vy,
+    onGround: localPlayer.onGround,
     color: localPlayer.color,
+    tags: localPlayer.tags || 0,
     updatedAt: serverTimestamp()
   }, { merge: true }).catch(() => {});
 }
 
+async function transferTag(targetUid) {
+  if (!roomId || !roomState || roomState.taggerId !== user.uid) return;
+  if (Date.now() < touchDebounceUntil) return;
+  touchDebounceUntil = Date.now() + TAG_COOLDOWN_MS;
+
+  const roomRef = getRoomRef(roomId);
+  const yourRef = getPlayerRef(roomId, user.uid);
+
+  await runTransaction(db, async (tx) => {
+    const roomSnap = await tx.get(roomRef);
+    const yourSnap = await tx.get(yourRef);
+    if (!roomSnap.exists() || !yourSnap.exists()) return;
+
+    const roomData = roomSnap.data();
+    const yourData = yourSnap.data();
+    if (roomData.taggerId !== user.uid) return;
+
+    tx.update(roomRef, {
+      taggerId: targetUid,
+      lastTagAt: Date.now(),
+      updatedAt: serverTimestamp()
+    });
+
+    tx.update(yourRef, {
+      tags: (yourData.tags || 0) + 1,
+      updatedAt: serverTimestamp()
+    });
+  });
+}
+
+function handleTagContact() {
+  if (!localPlayer || !roomState || roomState.taggerId !== user.uid) return;
+
+  for (const p of players.values()) {
+    if (p.uid === user.uid) continue;
+    const d = Math.hypot(localPlayer.x - p.x, localPlayer.y - p.y);
+    if (d <= TAG_DISTANCE) {
+      transferTag(p.uid).catch(() => {});
+      break;
+    }
+  }
+}
+
 function updateLocal(dt) {
-  if (!localPlayer?.alive) return;
-  let vx = 0;
-  let vy = 0;
-  if (keyState["w"]) vy -= 1;
-  if (keyState["s"]) vy += 1;
-  if (keyState["a"]) vx -= 1;
-  if (keyState["d"]) vx += 1;
+  if (!localPlayer) return;
 
-  const len = Math.hypot(vx, vy) || 1;
-  const gun = WEAPONS[localPlayer.weapon] || WEAPONS.pistol;
-  const speed = BASE_SPEED * gun.speedPenalty;
-  vx = (vx / len) * speed;
-  vy = (vy / len) * speed;
+  const movingLeft = keyState["a"] || keyState["arrowleft"];
+  const movingRight = keyState["d"] || keyState["arrowright"];
+  const jumpPressed = keyState["w"] || keyState["arrowup"] || keyState[" "];
 
-  const nx = localPlayer.x + vx * dt;
-  const ny = localPlayer.y + vy * dt;
+  localPlayer.vx = 0;
+  if (movingLeft) localPlayer.vx = -MOVE_SPEED;
+  if (movingRight) localPlayer.vx = MOVE_SPEED;
 
-  if (!collidesWithMap(nx, localPlayer.y)) localPlayer.x = nx;
-  if (!collidesWithMap(localPlayer.x, ny)) localPlayer.y = ny;
+  if (jumpPressed && localPlayer.onGround) {
+    localPlayer.vy = -JUMP_SPEED;
+    localPlayer.onGround = false;
+  }
 
-  localPlayer.dir = Math.atan2(mouse.y - localPlayer.y, mouse.x - localPlayer.x);
+  localPlayer.vy += GRAVITY * dt;
+
+  const nextX = localPlayer.x + localPlayer.vx * dt;
+  const resolvedX = resolveHorizontalCollision(nextX, localPlayer.y);
+  localPlayer.x = resolvedX;
+
+  const nextY = localPlayer.y + localPlayer.vy * dt;
+  const vertical = resolveVerticalCollision(localPlayer.x, nextY);
+  localPlayer.y = vertical.y;
+  localPlayer.onGround = vertical.onGround;
+
+  handleTagContact();
 }
 
 function tick(ts) {
@@ -503,15 +433,13 @@ function tick(ts) {
 
   if (roomId && localPlayer) {
     updateLocal(dt);
+    updateCamera();
     queuePlayerSync();
-    maybeRespawn();
-    syncOverlay();
   }
 
-  drawMap();
-  drawTracers();
-  drawPlayers();
-  drawHudText();
+  drawBackground();
+  drawWorld();
+  drawOverlay();
 
   requestAnimationFrame(tick);
 }
@@ -519,26 +447,28 @@ function tick(ts) {
 async function createRoom() {
   if (!user) return;
   let code = randCode();
-  let attempts = 0;
 
-  while (attempts < 6) {
+  for (let i = 0; i < 6; i++) {
     const roomRef = getRoomRef(code);
     const snap = await getDoc(roomRef);
+
     if (!snap.exists()) {
       await setDoc(roomRef, {
         createdAt: serverTimestamp(),
         hostId: user.uid,
         mapKey: mapSelect.value,
-        status: "active"
+        status: "active",
+        taggerId: user.uid,
+        lastTagAt: 0
       });
       await joinRoom(code);
       return;
     }
+
     code = randCode();
-    attempts += 1;
   }
 
-  setStatus("Failed to create room. Try again.", true);
+  setStatus("Could not create room. Try again.", true);
 }
 
 async function joinRoom(codeRaw) {
@@ -553,38 +483,40 @@ async function joinRoom(codeRaw) {
   }
 
   roomId = code;
-  const roomData = roomSnap.data();
-  currentMap = MAPS[roomData.mapKey] || MAPS.arena;
-
+  roomState = roomSnap.data();
+  currentMap = MAPS[roomState.mapKey] || MAPS.city;
   const spawn = pickSpawn(currentMap);
+
   localPlayer = {
     uid: user.uid,
     name: getPlayerName(),
     x: spawn.x,
     y: spawn.y,
-    dir: 0,
-    hp: 100,
-    alive: true,
-    weapon: "pistol",
-    kills: 0,
-    deaths: 0,
-    respawnAt: 0,
+    vx: 0,
+    vy: 0,
+    onGround: false,
+    tags: 0,
     color: palette[Math.floor(Math.random() * palette.length)]
   };
 
-  await setDoc(getPlayerRef(code, user.uid), {
+  await setDoc(getPlayerRef(roomId, user.uid), {
     ...localPlayer,
-    updatedAt: serverTimestamp(),
-    joinedAt: serverTimestamp()
+    joinedAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   });
 
-  roomCodeText.textContent = code;
+  if (!roomState.taggerId) {
+    await setDoc(roomRef, { taggerId: user.uid, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
+  roomCodeText.textContent = roomId;
   mapNameText.textContent = currentMap.name;
   youText.textContent = localPlayer.name;
+  taggerText.textContent = "...";
 
   watchRoom();
-  showGameUI(true);
-  setStatus("In room. Fight!", false);
+  showSections(true);
+  setStatus("Joined room.");
 }
 
 function watchRoom() {
@@ -594,31 +526,40 @@ function watchRoom() {
 
   roomUnsub = onSnapshot(getRoomRef(roomId), (snap) => {
     if (!snap.exists()) return;
-    const data = snap.data();
-    currentMap = MAPS[data.mapKey] || MAPS.arena;
+
+    roomState = snap.data();
+    currentMap = MAPS[roomState.mapKey] || MAPS.city;
     mapNameText.textContent = currentMap.name;
+
+    const tagger = players.get(roomState.taggerId);
+    taggerText.textContent = tagger?.name || (roomState.taggerId === user?.uid ? "You" : "Unknown");
+    updateLeaderboard();
   });
 
   playersUnsub = onSnapshot(getPlayersCol(roomId), (snap) => {
     players = new Map();
+
     snap.forEach((d) => {
       const p = d.data();
       players.set(d.id, { uid: d.id, ...p });
     });
 
-    const freshMe = players.get(user.uid);
-    if (freshMe) {
-      localPlayer = { ...localPlayer, ...freshMe, uid: user.uid };
-      youText.textContent = `${localPlayer.name}`;
+    const mine = players.get(user.uid);
+    if (mine) {
+      localPlayer = { ...localPlayer, ...mine, uid: user.uid };
+      youText.textContent = localPlayer.name;
     }
+
+    const tagger = players.get(roomState?.taggerId);
+    taggerText.textContent = tagger?.name || (roomState?.taggerId === user?.uid ? "You" : "Unknown");
     updateLeaderboard();
   });
 }
 
 async function leaveRoom() {
   if (!roomId || !user) return;
-
   const oldRoom = roomId;
+
   roomUnsub?.();
   playersUnsub?.();
   roomUnsub = null;
@@ -629,12 +570,13 @@ async function leaveRoom() {
   } catch (_) {}
 
   roomId = null;
-  players = new Map();
+  roomState = null;
   localPlayer = null;
-  showGameUI(false);
+  players = new Map();
   leaderboard.innerHTML = "";
   overlay.classList.add("hidden");
   overlay.classList.remove("flex");
+  showSections(false);
   setStatus("Left room.");
 }
 
@@ -645,35 +587,18 @@ window.addEventListener("beforeunload", () => {
 });
 
 window.addEventListener("keydown", (e) => {
-  const k = e.key.toLowerCase();
-  keyState[k] = true;
-  if (!localPlayer) return;
-  if (k === "1") localPlayer.weapon = "pistol";
-  if (k === "2") localPlayer.weapon = "ar";
-  if (k === "3") localPlayer.weapon = "shotgun";
-  if (k === "4") localPlayer.weapon = "sniper";
+  keyState[e.key.toLowerCase()] = true;
 });
 
 window.addEventListener("keyup", (e) => {
   keyState[e.key.toLowerCase()] = false;
 });
 
-canvas.addEventListener("mousemove", (e) => {
-  const r = canvas.getBoundingClientRect();
-  mouse.x = ((e.clientX - r.left) / r.width) * canvas.width;
-  mouse.y = ((e.clientY - r.top) / r.height) * canvas.height;
-});
-
-canvas.addEventListener("mousedown", (e) => {
-  if (e.button === 0) tryShoot();
-});
-
 createRoomBtn.addEventListener("click", createRoom);
 joinRoomBtn.addEventListener("click", () => joinRoom(roomCodeInput.value));
 leaveRoomBtn.addEventListener("click", leaveRoom);
 
-drawWeaponButtons();
-showGameUI(false);
+showSections(false);
 requestAnimationFrame(tick);
 
 onAuthStateChanged(auth, (u) => {
